@@ -36,14 +36,17 @@ impl<'info> RegisterDriver<'info> {
         };
         let cpi_program = self.token_program.to_account_info();
         token::transfer(CpiContext::new(cpi_program, cpi_accounts), stake_amount)?;
-        driver.authority = self.authority.key();
-        driver.vehicle_hash = vehicle_hash;
-        driver.stake_amount = stake_amount;
-        driver.ratings = 0;
-        driver.total_ratings = 0;
-        driver.total_rides = 0;
-        driver.is_verified = false;
-        driver.bump = self.driver.bump;
+    driver.authority = self.authority.key();
+    driver.vehicle_hash = vehicle_hash;
+    driver.stake_amount = stake_amount;
+    driver.ratings = 0;
+    driver.total_ratings = 0;
+    driver.total_rides = 0;
+    driver.is_verified = false;
+    
+    // compute PDA bump and store it in the account so other instructions can verify the PDA
+    let (_pda, bump) = Pubkey::find_program_address(&[b"driver", self.authority.key().as_ref()], &crate::ID);
+    driver.bump = bump;
         Ok(())
     }
 }
