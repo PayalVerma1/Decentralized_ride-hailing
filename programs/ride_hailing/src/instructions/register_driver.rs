@@ -1,4 +1,5 @@
 use crate::state::driver::Driver;
+use crate::errors::CustomError;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 use anchor_lang::prelude::*;
 #[derive(Accounts)]
@@ -25,7 +26,7 @@ pub struct RegisterDriver<'info> {
     pub system_program: Program<'info, System>,
 }
 impl<'info> RegisterDriver<'info> {
-    pub fn initialize(&mut self, stake_amount: u64, vehicle_hash: [u8; 32]) -> Result<()> {
+    pub fn initialize(&mut self, stake_amount: u64, vehicle_hash: [u8; 32], bump: u8) -> Result<()> {
         pub const MIN_STAKE: u64 = 1_000_000; 
         require!(stake_amount >= MIN_STAKE, CustomError::StakeTooLow);
         let driver = &mut self.driver;
@@ -43,9 +44,9 @@ impl<'info> RegisterDriver<'info> {
     driver.total_ratings = 0;
     driver.total_rides = 0;
     driver.is_verified = false;
+    driver.verified_at = 0;
     
-    // compute PDA bump and store it in the account so other instructions can verify the PDA
-    let (_pda, bump) = Pubkey::find_program_address(&[b"driver", self.authority.key().as_ref()], &crate::ID);
+    // Store the bump that Anchor computed
     driver.bump = bump;
         Ok(())
     }

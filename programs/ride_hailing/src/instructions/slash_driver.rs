@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::state::driver::Driver;
+use crate::errors::CustomError;
 #[derive(Accounts)]
 pub struct SlashDriver<'info>{
     #[account(

@@ -29,7 +29,7 @@ pub struct RequestRide<'info>{
 
 }
 impl<'info>RequestRide<'info>{
-    pub fn request(&mut self,source:[u8; 32],destination:[u8; 32],amount:u64)->Result<()>{
+    pub fn request(&mut self, source:[u8; 32], destination:[u8; 32], amount:u64, bump: u8)->Result<()>{
         require!(amount>0 ,CustomError::InvalidAmount);
        let cpi_accounts = Transfer {
         from: self.rider_token_account.to_account_info(),
@@ -48,10 +48,12 @@ impl<'info>RequestRide<'info>{
         ride.driver = Pubkey::default();
         ride.amount = amount;
         ride.status = RideStatus::Requested;
-      ride.source_hash = source;
-ride.destination_hash = destination;
+        ride.source_hash = source;
+        ride.destination_hash = destination;
         ride.timestamp = Clock::get()?.unix_timestamp;
-       ride.bump=ride.bumps;
+        
+        // Store the bump that Anchor computed
+        ride.bump = bump;
        
         Ok(())
         

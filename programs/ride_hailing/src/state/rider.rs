@@ -12,7 +12,3 @@ impl Rider {
     // discriminator (8) + Pubkey (32) + String (4 + 50) + rating (1)
     pub const LEN: usize = 8 + 32 + 4 + 50 + 1;
 }
-
-impl Rider {
-    pub const LEN: usize = 8 + 32 + 4 + 50 + 1;
-}

@@ -20,5 +20,7 @@ pub enum RideStatus {
 }
 
 impl Ride {
-    pub const LEN: usize = 8 + 32 + 32 + 8 + 1 + 4 + 100 + 4 + 100 + 8+1;
+    // discriminator (8) + rider (32) + driver (32) + amount (8) + status (1)
+    // + source_hash (32) + destination_hash (32) + timestamp (8) + bump (1)
+    pub const LEN: usize = 8 + 32 + 32 + 8 + 1 + 32 + 32 + 8 + 1;
 }
