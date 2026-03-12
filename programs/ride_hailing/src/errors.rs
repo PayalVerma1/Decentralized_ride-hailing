@@ -13,4 +13,10 @@ pub enum CustomError {
 
     #[msg("Invalid amount")]
     InvalidAmount,
+
+    #[msg("Ride is not available for acceptance")]
+    RideNotAvailable,
+
+    #[msg("Driver is not verified")]
+    DriverNotVerified,
 }

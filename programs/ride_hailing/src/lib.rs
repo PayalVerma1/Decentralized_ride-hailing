@@ -46,6 +46,13 @@ pub mod ride_hailing {
         let bump = ctx.bumps.ride;
         ctx.accounts.request(source, destination, amount, bump)
     }
+
+    pub fn accept_ride(
+        ctx: Context<AcceptRide>,
+        _ride_id: u64,
+    ) -> Result<()> {
+        ctx.accounts.accept()
+    }
 }
 
 #[derive(Accounts)]
