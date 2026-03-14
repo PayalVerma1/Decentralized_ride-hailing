@@ -54,11 +54,25 @@ pub mod ride_hailing {
         ctx.accounts.accept()
     }
 
+    pub fn start_ride(
+        ctx: Context<StartRide>,
+        _ride_id: u64,
+    ) -> Result<()> {
+        ctx.accounts.start()
+    }
+
     pub fn cancel_ride(
         ctx: Context<CancelRide>,
         _ride_id: u64,
     ) -> Result<()> {
         ctx.accounts.cancel()
+    }
+
+    pub fn complete_ride(
+        ctx: Context<CompleteRide>,
+        _ride_id: u64,
+    ) -> Result<()> {
+        ctx.accounts.complete()
     }
 }
 
