@@ -19,4 +19,7 @@ pub enum CustomError {
 
     #[msg("Driver is not verified")]
     DriverNotVerified,
+    
+    #[msg("Unauthorized action")]
+    Unauthorized,
 }
