@@ -53,6 +53,13 @@ pub mod ride_hailing {
     ) -> Result<()> {
         ctx.accounts.accept()
     }
+
+    pub fn cancel_ride(
+        ctx: Context<CancelRide>,
+        _ride_id: u64,
+    ) -> Result<()> {
+        ctx.accounts.cancel()
+    }
 }
 
 #[derive(Accounts)]
