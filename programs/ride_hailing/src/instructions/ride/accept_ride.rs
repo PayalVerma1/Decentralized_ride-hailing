@@ -15,6 +15,7 @@ pub struct AcceptRide<'info> {
     pub ride: Account<'info, Ride>,
 
     #[account(
+        mut,
         seeds = [b"driver", driver_authority.key().as_ref()],
         bump = driver.bump,
         constraint = driver.is_verified @ CustomError::DriverNotVerified,
@@ -27,9 +28,17 @@ pub struct AcceptRide<'info> {
 
 impl<'info> AcceptRide<'info> {
     pub fn accept(&mut self) -> Result<()> {
+        require!(
+            self.ride.status == RideStatus::Requested,
+            CustomError::RideNotAvailable
+        );
         let ride = &mut self.ride;
         ride.driver = self.driver_authority.key();
         ride.status = RideStatus::InProgress;
+        ride.timestamp = Clock::get()?.unix_timestamp;
+        self.driver.total_rides += 1;
+  
+
 
         msg!(
             "Ride accepted by driver: {}",
