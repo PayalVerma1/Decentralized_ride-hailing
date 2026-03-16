@@ -17,7 +17,7 @@ pub struct CancelRide<'info> {
     pub rider: Signer<'info>,
 
     #[account(mut)]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault_b: Account<'info, TokenAccount>,
     #[account(mut)]
     pub rider_token_account: Account<'info, TokenAccount>,
 
@@ -36,9 +36,9 @@ impl<'info> CancelRide<'info> {
 
         let amount = ride.amount;
         let cpi_accounts = Transfer {
-            from: self.vault.to_account_info(),
+            from: self.vault_b.to_account_info(),
             to: self.rider_token_account.to_account_info(),
-            authority: self.vault.to_account_info(),
+            authority: self.vault_b.to_account_info(),
         };
 
         let cpi_program = self.token_program.to_account_info();

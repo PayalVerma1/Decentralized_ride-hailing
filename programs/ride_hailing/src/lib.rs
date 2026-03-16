@@ -72,7 +72,7 @@ pub mod ride_hailing {
         ctx: Context<CompleteRide>,
         _ride_id: u64,
     ) -> Result<()> {
-        ctx.accounts.complete()
+        ctx.accounts.complete(_ride_id)
     }
 }
 

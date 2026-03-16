@@ -21,7 +21,7 @@ pub struct RequestRide<'info>{
    pub rider_token_account:Account<'info,TokenAccount>,
 
    #[account(mut)]
-   pub vault:Account<'info,TokenAccount>,
+   pub vault_b:Account<'info,TokenAccount>,
 
    pub token_program:Program<'info,Token>,
    pub system_program:Program<'info,System>,
@@ -33,7 +33,7 @@ impl<'info>RequestRide<'info>{
         require!(amount>0 ,CustomError::InvalidAmount);
        let cpi_accounts = Transfer {
         from: self.rider_token_account.to_account_info(),
-        to: self.vault.to_account_info(),
+        to: self.vault_b.to_account_info(),
         authority: self.rider.to_account_info(),
     };
 
