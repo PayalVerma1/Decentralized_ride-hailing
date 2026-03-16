@@ -34,7 +34,7 @@ impl<'info> AcceptRide<'info> {
         );
         let ride = &mut self.ride;
         ride.driver = self.driver_authority.key();
-        ride.status = RideStatus::InProgress;
+        ride.status = RideStatus::Accepted;
         ride.timestamp = Clock::get()?.unix_timestamp;
         self.driver.total_rides += 1;
   

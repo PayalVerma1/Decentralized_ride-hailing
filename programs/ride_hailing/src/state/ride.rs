@@ -14,6 +14,7 @@ pub struct Ride {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
 pub enum RideStatus {
     Requested,
+    Accepted,
     InProgress,
     Completed,
     Canceled,

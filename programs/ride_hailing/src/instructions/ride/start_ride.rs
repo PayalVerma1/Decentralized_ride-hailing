@@ -10,7 +10,7 @@ pub struct StartRide<'info> {
         mut,
         seeds = [b"ride", ride_account.rider.as_ref(), &ride_id.to_le_bytes()],
         bump = ride_account.bump,
-        constraint = ride_account.status == RideStatus::Requested @ CustomError::RideNotAvailable,
+        constraint = ride_account.status == RideStatus::Accepted @ CustomError::RideNotAvailable,
     )]
     pub ride_account: Account<'info, Ride>,
 
@@ -29,15 +29,10 @@ pub struct StartRide<'info> {
 impl<'info> StartRide<'info> {
     pub fn start(&mut self) -> Result<()> {
         let ride = &mut self.ride_account;
-        if ride.driver == Pubkey::default() {
-            ride.driver = self.authority.key();
-        } else {
-            require!(
-                ride.driver == self.authority.key(),
-                CustomError::Unauthorized
-            );
-        }
-
+        require!(
+            ride.status==RideStatus::Accepted,
+            CustomError::RideNotAvailable
+        );
         ride.status = RideStatus::InProgress;
         ride.timestamp = Clock::get()?.unix_timestamp;
 
