@@ -10,6 +10,8 @@ pub struct Driver {
     pub total_ratings: u64,
     pub total_rides: u64,
     pub is_verified: bool,
+    pub civic_id_hash: [u8; 32], 
+    pub civic_id_verified: bool, 
     pub bump: u8,
     pub verified_at: i64,
 }
@@ -17,6 +19,6 @@ pub struct Driver {
 impl Driver {
     // sizes: discriminator (8) + Pubkey (32) + vehicle_hash [u8;32] (32)
     // + stake_amount (8) + ratings (1) + total_ratings (8) + total_rides (8)
-    // + is_verified (1) + bump (1) + verified_at (8)
-    pub const LEN: usize = 8 + 32 + 32 + 8 + 1 + 8 + 8 + 1 + 1 + 8;
+    // + is_verified (1) + civic_id_hash (32) + civic_id_verified (1) + bump (1) + verified_at (8)
+    pub const LEN: usize = 8 + 32 + 32 + 8 + 1 + 8 + 8 + 1 + 32 + 1 + 1 + 8;
 }

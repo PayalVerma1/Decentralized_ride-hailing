@@ -22,4 +22,7 @@ pub enum CustomError {
     
     #[msg("Unauthorized action")]
     Unauthorized,
+
+    #[msg("Civic ID not verified")]
+    CivicIDNotVerified,
 }

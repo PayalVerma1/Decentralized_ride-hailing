@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::state::driver::Driver;
 use crate::state::admin_state::AdminState;
+use crate::errors::CustomError;
 #[derive(Accounts)]
 pub struct VerifyDriver<'info>{
     #[account(
@@ -21,15 +22,11 @@ impl<'info>VerifyDriver<'info>{
     pub fn verify(&mut self)->Result<()>{
        require!(
             self.authority.key() == self.admin.authority,
-            ErrorCode::Unauthorized
+            CustomError::Unauthorized
         );
+        require!(!self.driver.civic_id_verified, CustomError::CivicIDNotVerified);
        self.driver.is_verified = true;
        self.driver.verified_at = Clock::get()?.unix_timestamp;
        Ok(())
     }
-}
-#[error_code]
-pub enum ErrorCode{
-    #[msg("Unauthorized")]
-    Unauthorized,           
 }
