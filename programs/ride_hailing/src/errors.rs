@@ -23,6 +23,9 @@ pub enum CustomError {
     #[msg("Unauthorized action")]
     Unauthorized,
 
-    #[msg("Civic ID not verified")]
-    CivicIDNotVerified,
+    #[msg("Driver is already verified")]
+    AlreadyVerified,
+
+    #[msg("Invalid gateway token")]
+    InvalidGatewayToken,
 }

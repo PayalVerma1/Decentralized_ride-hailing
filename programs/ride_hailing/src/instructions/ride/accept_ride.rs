@@ -18,12 +18,15 @@ pub struct AcceptRide<'info> {
         mut,
         seeds = [b"driver", driver_authority.key().as_ref()],
         bump = driver.bump,
-        constraint = driver.is_verified @ CustomError::DriverNotVerified,
+       
     )]
     pub driver: Account<'info, Driver>,
 
     #[account(mut)]
     pub driver_authority: Signer<'info>,
+
+    // CHECK: Gateway token is optional and not used in this instruction
+    // pub gateway_token: AccountInfo<'info>,
 }
 
 impl<'info> AcceptRide<'info> {
@@ -32,6 +35,8 @@ impl<'info> AcceptRide<'info> {
             self.ride.status == RideStatus::Requested,
             CustomError::RideNotAvailable
         );
+        // require!(!self.gateway_token.data_is_empty(), CustomError::InvalidGatewayToken);
+
         let ride = &mut self.ride;
         ride.driver = self.driver_authority.key();
         ride.status = RideStatus::Accepted;

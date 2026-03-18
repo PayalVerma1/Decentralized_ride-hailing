@@ -24,7 +24,7 @@ impl<'info>VerifyDriver<'info>{
             self.authority.key() == self.admin.authority,
             CustomError::Unauthorized
         );
-        require!(!self.driver.civic_id_verified, CustomError::CivicIDNotVerified);
+       require!(!self.driver.is_verified, CustomError::AlreadyVerified);
        self.driver.is_verified = true;
        self.driver.verified_at = Clock::get()?.unix_timestamp;
        Ok(())

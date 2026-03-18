@@ -74,7 +74,22 @@ pub mod ride_hailing {
     ) -> Result<()> {
         ctx.accounts.complete(_ride_id)
     }
+
+    // pub fn report_gps(
+    //     ctx: Context<ReportGPS>,
+    //     latitude: f64,
+    //     longitude: f64,
+    // ) -> Result<()> {
+    //     ctx.accounts.report(latitude, longitude)
+    // }
 }
 
 #[derive(Accounts)]
 pub struct Initialize {}
+//this error error[E0432]: unresolved import `crate`
+//   -
+// 13 | #[program]
+//    | ^^^^^^^^^^ could not find `__client_accounts_initialize` in the crate root
+//    |
+  
+//  occur when all the instructions are not defined in the `instructions` module. 
