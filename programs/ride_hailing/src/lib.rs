@@ -15,7 +15,11 @@ pub mod ride_hailing {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        msg!("Greetings from: {:?}", ctx.program_id);
+        // Initialize admin state with the authority provided
+        let admin = &mut ctx.accounts.admin;
+        admin.authority = ctx.accounts.admin_authority.key();
+        admin.bump = ctx.bumps.admin;
+        msg!("Initialized admin: {:?}", admin.authority);
         Ok(())
     }
 
@@ -84,8 +88,21 @@ pub mod ride_hailing {
     // }
 }
 
+
 #[derive(Accounts)]
-pub struct Initialize {}
+pub struct Initialize<'info> {
+    #[account(
+        init,
+        payer = admin_authority,
+        space = AdminState::LEN,
+        seeds = [b"admin_state"],
+        bump
+    )]
+    pub admin: Account<'info, AdminState>,
+    #[account(mut)]
+    pub admin_authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
 //this error error[E0432]: unresolved import `crate`
 //   -
 // 13 | #[program]
