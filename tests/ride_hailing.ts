@@ -44,9 +44,11 @@ describe("ride_hailing", () => {
         admin: adminPda,
         adminAuthority: provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
-      })
+      } as any)
       .rpc();
-
-    assert.ok(tx);
+      const adminAccount= await program.account.adminState.fetch(adminPda);
+    assert.ok(adminAccount!=null);
+    assert.equal(adminAccount.authority.toString(),
+  provider.wallet.publicKey.toString());
  });
  });
