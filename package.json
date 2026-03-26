@@ -5,7 +5,12 @@
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "0.32.1"
+    "@codama/nodes-from-anchor": "^1.4.0",
+    "@codama/renderers": "^1.0.34",
+    "@codama/visitors-core": "^1.5.1",
+    "@coral-xyz/anchor": "0.32.1",
+    "@metaplex-foundation/umi": "^1.5.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.5.1"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.0",
