@@ -7,6 +7,7 @@ import {
   PublicKey,
   SystemProgram,
   LAMPORTS_PER_SOL,
+  Transaction,
 } from "@solana/web3.js";
 import { assert } from "chai";
 
@@ -143,12 +144,16 @@ describe("ride_hailing", () => {
     );
     assert.equal(Number(vaultTokenBalanceAfter.amount), amount.toNumber());
   });
+
   it("accept ride", async () => {
+    const testRider = Keypair.generate();
     const driver = Keypair.generate();
     await connection.confirmTransaction(
-      await connection.requestAirdrop(driver.publicKey, 2 * LAMPORTS_PER_SOL)
+      await connection.requestAirdrop(testRider.publicKey, 5 * LAMPORTS_PER_SOL)
     );
-
+    await connection.confirmTransaction(
+      await connection.requestAirdrop(driver.publicKey, 5 * LAMPORTS_PER_SOL)
+    );
     const mint = await createMint(
       connection,
       payer,
@@ -157,81 +162,166 @@ describe("ride_hailing", () => {
       6
     );
 
-    const riderTokenAccount = await getOrCreateAssociatedTokenAccount(
-      connection,
-      payer,
-      mint,
-      rider.publicKey
+    const createRawTokenAccount = async (
+      owner: PublicKey,
+      signer: Keypair
+    ): Promise<PublicKey> => {
+      const tokenAccountKeypair = Keypair.generate();
+      const rentExemption = await connection.getMinimumBalanceForRentExemption(165);
+
+      const { createInitializeAccountInstruction } = splToken;
+
+      const createIx = SystemProgram.createAccount({
+        fromPubkey: signer.publicKey,
+        newAccountPubkey: tokenAccountKeypair.publicKey,
+        space: 165,
+        lamports: rentExemption,
+        programId: TOKEN_PROGRAM_ID,
+      });
+
+      const initIx = createInitializeAccountInstruction(
+        tokenAccountKeypair.publicKey,
+        mint,
+        owner,
+        TOKEN_PROGRAM_ID
+      );
+
+      const tx = new Transaction().add(createIx, initIx);
+      tx.feePayer = signer.publicKey;
+      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      tx.sign(signer, tokenAccountKeypair);
+
+      const sig = await connection.sendRawTransaction(tx.serialize());
+      await connection.confirmTransaction(sig);
+
+      return tokenAccountKeypair.publicKey;
+    };
+    const riderTokenAccount = await createRawTokenAccount(
+      testRider.publicKey,
+      testRider
     );
-    const driverTokenAccount = await getOrCreateAssociatedTokenAccount(
+    const driverTokenAccount = await createRawTokenAccount(
+      driver.publicKey,
+      driver
+    );
+    const riderVaultKeypair = Keypair.generate();
+    const driverVaultKeypair = Keypair.generate();
+    
+    const { createInitializeAccountInstruction } = splToken;
+    const rentExemption = await connection.getMinimumBalanceForRentExemption(165);
+    let createVaultTx = new Transaction().add(
+      SystemProgram.createAccount({
+        fromPubkey: testRider.publicKey,
+        newAccountPubkey: riderVaultKeypair.publicKey,
+        space: 165,
+        lamports: rentExemption,
+        programId: TOKEN_PROGRAM_ID,
+      }),
+      createInitializeAccountInstruction(
+        riderVaultKeypair.publicKey,
+        mint,
+        testRider.publicKey,
+        TOKEN_PROGRAM_ID
+      )
+    );
+    createVaultTx.feePayer = testRider.publicKey;
+    createVaultTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    createVaultTx.sign(testRider, riderVaultKeypair);
+    const riderVaultSig = await connection.sendRawTransaction(createVaultTx.serialize());
+    await connection.confirmTransaction(riderVaultSig);
+    createVaultTx = new Transaction().add(
+      SystemProgram.createAccount({
+        fromPubkey: driver.publicKey,
+        newAccountPubkey: driverVaultKeypair.publicKey,
+        space: 165,
+        lamports: rentExemption,
+        programId: TOKEN_PROGRAM_ID,
+      }),
+      createInitializeAccountInstruction(
+        driverVaultKeypair.publicKey,
+        mint,
+        driver.publicKey,
+        TOKEN_PROGRAM_ID
+      )
+    );
+    createVaultTx.feePayer = driver.publicKey;
+    createVaultTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    createVaultTx.sign(driver, driverVaultKeypair);
+    const driverVaultSig = await connection.sendRawTransaction(createVaultTx.serialize());
+    await connection.confirmTransaction(driverVaultSig);
+
+    const riderVault = riderVaultKeypair.publicKey;
+    const driverVault = driverVaultKeypair.publicKey;
+    await mintTo(
       connection,
       payer,
       mint,
-      driver.publicKey
+      riderTokenAccount,
+      payer,
+      10_000_000
     );
 
     await mintTo(
       connection,
       payer,
       mint,
-      riderTokenAccount.address,
-      payer,
-      10_000_000
-    );
-    await mintTo(
-      connection,
-      payer,
-      mint,
-      driverTokenAccount.address,
+      driverTokenAccount,
       payer,
       5_000_000
     );
 
-    const riderVault = await createAccount(
-      connection,
-      payer,
-      mint,
-      payer.publicKey
-    );
-    const driverVault = await createAccount(
-      connection,
-      payer,
-      mint,
-      payer.publicKey
-    );
-
     const rideId = new anchor.BN(2);
-    const source = new Uint8Array(32).fill(3);
-    const destination = new Uint8Array(32).fill(4);
-    const amount = new anchor.BN(1_000_000);
-    const stakeAmount = new anchor.BN(1_000_000);
-    const vehicleHash = new Uint8Array(32).fill(9);
-
     const [ridePda] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("ride"),
-        rider.publicKey.toBuffer(),
+        testRider.publicKey.toBuffer(),
         rideId.toArrayLike(Buffer, "le", 8),
       ],
       program.programId
     );
+
     const [driverPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("driver"), driver.publicKey.toBuffer()],
       program.programId
     );
+
+    const vehicleHash = new Uint8Array(32).fill(9);
+    const stakeAmount = new anchor.BN(1_000_000);
 
     await program.methods
       .registerDriver(stakeAmount, Array.from(vehicleHash))
       .accounts({
         driver: driverPda,
         authority: driver.publicKey,
-        driverTokenAccount: driverTokenAccount.address,
+        driverTokenAccount: driverTokenAccount,
         vault: driverVault,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       } as any)
       .signers([driver])
       .rpc();
+
+    console.log("✓ Driver registered");
+
+    const [adminPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("admin_state")],
+      program.programId
+    );
+
+    await program.methods
+      .verifyDriver()
+      .accounts({
+        driver: driverPda,
+        authority: payer.publicKey,
+        admin: adminPda,
+      } as any)
+      .rpc();
+
+    console.log("✓ Driver verified");
+
+    const source = new Uint8Array(32).fill(3);
+    const destination = new Uint8Array(32).fill(4);
+    const amount = new anchor.BN(1_000_000);
 
     await program.methods
       .requestRide(
@@ -242,15 +332,16 @@ describe("ride_hailing", () => {
       )
       .accounts({
         ride: ridePda,
-        rider: rider.publicKey,
-        riderTokenAccount: riderTokenAccount.address,
+        rider: testRider.publicKey,
+        riderTokenAccount: riderTokenAccount,
         vaultB: riderVault,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       } as any)
-      .signers([rider])
+      .signers([testRider])
       .rpc();
 
+    console.log("✓ Ride request created");
     await program.methods
       .acceptRide(rideId)
       .accounts({
@@ -261,13 +352,36 @@ describe("ride_hailing", () => {
       .signers([driver])
       .rpc();
 
+    console.log("✓ Ride accepted");
     const acceptedRide = await program.account.ride.fetch(ridePda);
     const driverAccount = await program.account.driver.fetch(driverPda);
 
-    assert.equal(acceptedRide.rider.toString(), rider.publicKey.toString());
-    assert.equal(acceptedRide.driver.toString(), driver.publicKey.toString());
-    assert.equal(Object.keys(acceptedRide.status)[0], "accepted");
-    assert.equal(driverAccount.authority.toString(), driver.publicKey.toString());
-    assert.equal(driverAccount.totalRides.toNumber(), 1);
+    assert.equal(
+      acceptedRide.rider.toString(),
+      testRider.publicKey.toString(),
+      "Rider mismatch"
+    );
+    assert.equal(
+      acceptedRide.driver.toString(),
+      driver.publicKey.toString(),
+      "Driver mismatch"
+    );
+    assert.equal(
+      Object.keys(acceptedRide.status)[0],
+      "accepted",
+      "Status should be 'accepted'"
+    );
+    assert.equal(
+      driverAccount.authority.toString(),
+      driver.publicKey.toString(),
+      "Driver authority mismatch"
+    );
+    assert.equal(
+      driverAccount.totalRides.toNumber(),
+      1,
+      "Total rides should be 1"
+    );
+
+    console.log("✓ All assertions passed");
   });
 });
