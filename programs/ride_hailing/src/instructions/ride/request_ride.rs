@@ -17,10 +17,16 @@ pub struct RequestRide<'info>{
    #[account(mut)]
    pub rider:Signer<'info>,
 
-   #[account(mut)]
+   #[account(
+    mut,
+    constraint = rider_token_account.owner == rider.key() @ CustomError::Unauthorized,
+   )]
    pub rider_token_account:Account<'info,TokenAccount>,
 
-   #[account(mut)]
+   #[account(
+    mut,
+    constraint = vault_b.owner == ride.key() @ CustomError::Unauthorized,
+   )]
    pub vault_b:Account<'info,TokenAccount>,
 
    pub token_program:Program<'info,Token>,
