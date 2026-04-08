@@ -18,7 +18,7 @@ pub struct AcceptRide<'info> {
         mut,
         seeds = [b"driver", driver_authority.key().as_ref()],
         bump = driver.bump,
-       
+        constraint = driver.is_verified @ CustomError::DriverNotVerified,
     )]
     pub driver: Account<'info, Driver>,
 
@@ -35,16 +35,11 @@ impl<'info> AcceptRide<'info> {
             self.ride.status == RideStatus::Requested,
             CustomError::RideNotAvailable
         );
-        // require!(!self.gateway_token.data_is_empty(), CustomError::InvalidGatewayToken);
-
-        let ride = &mut self.ride;
-        ride.driver = self.driver_authority.key();
+    let ride = &mut self.ride;
+       ride.driver = self.driver_authority.key();
         ride.status = RideStatus::Accepted;
         ride.timestamp = Clock::get()?.unix_timestamp;
-        self.driver.total_rides += 1;
-  
-
-
+    
         msg!(
             "Ride accepted by driver: {}",
             self.driver_authority.key()

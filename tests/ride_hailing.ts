@@ -379,7 +379,6 @@ describe("ride_hailing", () => {
       1,
       "Total rides should be 1"
     );
-
   });
   it("complete ride", async()=>{
     const testRider = Keypair.generate();
@@ -397,6 +396,7 @@ describe("ride_hailing", () => {
       null,
       6
     );
+
       const createRawTokenAccount = async (
       owner: PublicKey,
       signer: Keypair
@@ -596,5 +596,6 @@ describe("ride_hailing", () => {
       0,
       "Ride vault should be emptied on completion"
     );
-  })
+  });
+
 });
