@@ -16,7 +16,10 @@ pub struct CancelRide<'info> {
     #[account(mut)]
     pub rider: Signer<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = vault_b.owner == rider.key() @ CustomError::Unauthorized,
+    )]
     pub vault_b: Account<'info, TokenAccount>,
     #[account(mut)]
     pub rider_token_account: Account<'info, TokenAccount>,
@@ -38,7 +41,7 @@ impl<'info> CancelRide<'info> {
         let cpi_accounts = Transfer {
             from: self.vault_b.to_account_info(),
             to: self.rider_token_account.to_account_info(),
-            authority: self.vault_b.to_account_info(),
+            authority: self.rider.to_account_info(),
         };
 
         let cpi_program = self.token_program.to_account_info();
