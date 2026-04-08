@@ -11,6 +11,7 @@ pub struct StartRide<'info> {
         seeds = [b"ride", ride_account.rider.as_ref(), &ride_id.to_le_bytes()],
         bump = ride_account.bump,
         constraint = ride_account.status == RideStatus::Accepted @ CustomError::RideNotAvailable,
+        constraint = ride_account.driver == authority.key() @ CustomError::Unauthorized,
     )]
     pub ride_account: Account<'info, Ride>,
 
