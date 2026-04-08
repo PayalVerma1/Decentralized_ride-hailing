@@ -26,6 +26,7 @@ pub struct RequestRide<'info>{
    #[account(
     mut,
     constraint = vault_b.owner == ride.key() @ CustomError::Unauthorized,
+    constraint = vault_b.mint == rider_token_account.mint @ CustomError::Unauthorized,
    )]
    pub vault_b:Account<'info,TokenAccount>,
 
@@ -58,7 +59,6 @@ impl<'info>RequestRide<'info>{
         ride.destination_hash = destination;
         ride.timestamp = Clock::get()?.unix_timestamp;
         
-        // Store the bump that Anchor computed
         ride.bump = bump;
        
         Ok(())

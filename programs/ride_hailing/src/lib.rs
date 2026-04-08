@@ -69,7 +69,7 @@ pub mod ride_hailing {
         ctx: Context<CancelRide>,
         _ride_id: u64,
     ) -> Result<()> {
-        ctx.accounts.cancel()
+        ctx.accounts.cancel(_ride_id)
     }
 
     pub fn complete_ride(
