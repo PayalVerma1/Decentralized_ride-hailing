@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
-use crate::state::ride::{Ride, RideStatus};
-use crate::state::driver::Driver;
 use crate::errors::CustomError;
+use crate::state::driver::Driver;
+use crate::state::ride::{Ride, RideStatus};
 
 #[derive(Accounts)]
 #[instruction(ride_id: u64)]
@@ -16,34 +16,25 @@ pub struct AcceptRide<'info> {
 
     #[account(
         mut,
-        seeds = [b"driver", driver_authority.key().as_ref()],
+        seeds = [b"driver", authority.key().as_ref()],
         bump = driver.bump,
+        has_one = authority,
         constraint = driver.is_verified @ CustomError::DriverNotVerified,
     )]
     pub driver: Account<'info, Driver>,
 
     #[account(mut)]
-    pub driver_authority: Signer<'info>,
-
-    // CHECK: Gateway token is optional and not used in this instruction
-    // pub gateway_token: AccountInfo<'info>,
+    pub authority: Signer<'info>,
 }
 
 impl<'info> AcceptRide<'info> {
     pub fn accept(&mut self) -> Result<()> {
-        require!(
-            self.ride.status == RideStatus::Requested,
-            CustomError::RideNotAvailable
-        );
-    let ride = &mut self.ride;
-       ride.driver = self.driver_authority.key();
+        let ride = &mut self.ride;
+        ride.driver = self.authority.key();
         ride.status = RideStatus::Accepted;
         ride.timestamp = Clock::get()?.unix_timestamp;
-    
-        msg!(
-            "Ride accepted by driver: {}",
-            self.driver_authority.key()
-        );
+
+        msg!("Ride accepted by driver: {}", self.authority.key());
 
         Ok(())
     }

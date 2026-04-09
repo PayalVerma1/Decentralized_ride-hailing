@@ -1,12 +1,14 @@
+#![allow(unexpected_cfgs)]
+
 use anchor_lang::prelude::*;
 
 pub mod errors;
 pub mod instructions;
 pub mod state;
 
-pub use instructions::*;
-pub use state::*;
 pub use errors::*;
+pub use instructions::*;
+pub use state::{AdminState, Driver, DriverLocation, Ride, RideStatus, Rider};
 
 declare_id!("H7zV5vcQmbnoLib3oUbVSHyhMjKU2BRLSpP9zbFTH4oG");
 
@@ -37,7 +39,8 @@ pub mod ride_hailing {
     }
 
     pub fn slash_driver(ctx: Context<SlashDriver>, slash_amount: u64) -> Result<()> {
-        ctx.accounts.slash(slash_amount)
+        let vault_authority_bump = ctx.bumps.vault_authority;
+        ctx.accounts.slash(slash_amount, vault_authority_bump)
     }
 
     pub fn request_ride(
@@ -87,8 +90,6 @@ pub mod ride_hailing {
     //     ctx.accounts.report(latitude, longitude)
     // }
 }
-
-
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(
@@ -103,10 +104,3 @@ pub struct Initialize<'info> {
     pub admin_authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
-//this error error[E0432]: unresolved import `crate`
-//   -
-// 13 | #[program]
-//    | ^^^^^^^^^^ could not find `__client_accounts_initialize` in the crate root
-//    |
-  
-//  occur when all the instructions are not defined in the `instructions` module. 

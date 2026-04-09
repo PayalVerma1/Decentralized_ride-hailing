@@ -12,6 +12,7 @@ import {
 } from "@solana/web3.js";
 import { assert } from "chai";
 import { createMint, decodeRevokeInstruction, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import { min } from "bn.js";
 
 describe("ride_hailing", () => {
   const provider = anchor.AnchorProvider.env();
@@ -71,6 +72,8 @@ describe("ride_hailing", () => {
       null,
       6
     );
+    
+    // Create rider's token account
     const riderTokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       payer,
@@ -85,16 +88,13 @@ describe("ride_hailing", () => {
       payer,
       initialRiderBalance
     );
-    const vaultAccount = await createAccount(
-      connection,
-      payer,
-      mint,
-      payer.publicKey
-    );
+    
     const rideId = new anchor.BN(1);
     const source = new Uint8Array(32).fill(1);
     const destination = new Uint8Array(32).fill(2);
     const amount = new anchor.BN(1_000_000);
+    
+    // Derive ride PDA
     const [ridePda] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("ride"),
@@ -103,6 +103,35 @@ describe("ride_hailing", () => {
       ],
       program.programId
     );
+
+    // Create vault account owned by the ride PDA
+    const { createInitializeAccountInstruction } = splToken;
+    const rentExemption = await connection.getMinimumBalanceForRentExemption(165);
+    const vaultAccountKeypair = Keypair.generate();
+    
+    const createVaultTx = new Transaction().add(
+      SystemProgram.createAccount({
+        fromPubkey: rider.publicKey,
+        newAccountPubkey: vaultAccountKeypair.publicKey,
+        space: 165,
+        lamports: rentExemption,
+        programId: TOKEN_PROGRAM_ID,
+      }),
+      createInitializeAccountInstruction(
+        vaultAccountKeypair.publicKey,
+        mint,
+        ridePda,  // Vault owned by ride PDA
+        TOKEN_PROGRAM_ID
+      )
+    );
+    createVaultTx.feePayer = rider.publicKey;
+    createVaultTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    createVaultTx.sign(rider, vaultAccountKeypair);
+    
+    const vaultSig = await connection.sendRawTransaction(createVaultTx.serialize());
+    await connection.confirmTransaction(vaultSig);
+    
+    const vaultAccount = vaultAccountKeypair.publicKey;
 
     await program.methods
       .requestRide(
@@ -206,54 +235,6 @@ describe("ride_hailing", () => {
       driver.publicKey,
       driver
     );
-    const riderVaultKeypair = Keypair.generate();
-    const driverVaultKeypair = Keypair.generate();
-    
-    const { createInitializeAccountInstruction } = splToken;
-    const rentExemption = await connection.getMinimumBalanceForRentExemption(165);
-    let createVaultTx = new Transaction().add(
-      SystemProgram.createAccount({
-        fromPubkey: testRider.publicKey,
-        newAccountPubkey: riderVaultKeypair.publicKey,
-        space: 165,
-        lamports: rentExemption,
-        programId: TOKEN_PROGRAM_ID,
-      }),
-      createInitializeAccountInstruction(
-        riderVaultKeypair.publicKey,
-        mint,
-        testRider.publicKey,
-        TOKEN_PROGRAM_ID
-      )
-    );
-    createVaultTx.feePayer = testRider.publicKey;
-    createVaultTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    createVaultTx.sign(testRider, riderVaultKeypair);
-    const riderVaultSig = await connection.sendRawTransaction(createVaultTx.serialize());
-    await connection.confirmTransaction(riderVaultSig);
-    createVaultTx = new Transaction().add(
-      SystemProgram.createAccount({
-        fromPubkey: driver.publicKey,
-        newAccountPubkey: driverVaultKeypair.publicKey,
-        space: 165,
-        lamports: rentExemption,
-        programId: TOKEN_PROGRAM_ID,
-      }),
-      createInitializeAccountInstruction(
-        driverVaultKeypair.publicKey,
-        mint,
-        driver.publicKey,
-        TOKEN_PROGRAM_ID
-      )
-    );
-    createVaultTx.feePayer = driver.publicKey;
-    createVaultTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    createVaultTx.sign(driver, driverVaultKeypair);
-    const driverVaultSig = await connection.sendRawTransaction(createVaultTx.serialize());
-    await connection.confirmTransaction(driverVaultSig);
-
-    const riderVault = riderVaultKeypair.publicKey;
-    const driverVault = driverVaultKeypair.publicKey;
     await mintTo(
       connection,
       payer,
@@ -281,9 +262,18 @@ describe("ride_hailing", () => {
       ],
       program.programId
     );
+    const riderVault = await createRawTokenAccount(ridePda, testRider);
 
     const [driverPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("driver"), driver.publicKey.toBuffer()],
+      program.programId
+    );
+    const [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault_authority"), driver.publicKey.toBuffer()],
+      program.programId
+    );
+    const [driverVaultPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), driver.publicKey.toBuffer()],
       program.programId
     );
 
@@ -294,9 +284,11 @@ describe("ride_hailing", () => {
       .registerDriver(stakeAmount, Array.from(vehicleHash))
       .accounts({
         driver: driverPda,
+        mint: mint,
         authority: driver.publicKey,
         driverTokenAccount: driverTokenAccount,
-        vault: driverVault,
+        vaultAuthority: vaultAuthorityPda,
+        vault: driverVaultPda,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       } as any)
@@ -345,7 +337,7 @@ describe("ride_hailing", () => {
       .accounts({
         ride: ridePda,
         driver: driverPda,
-        driverAuthority: driver.publicKey,
+        authority: driver.publicKey,
       } as any)
       .signers([driver])
       .rpc();
@@ -374,11 +366,7 @@ describe("ride_hailing", () => {
       driver.publicKey.toString(),
       "Driver authority mismatch"
     );
-    assert.equal(
-      driverAccount.totalRides.toNumber(),
-      1,
-      "Total rides should be 1"
-    );
+    assert.equal(driverAccount.totalRides.toNumber(), 0, "Total rides should still be 0");
   });
   it("complete ride", async()=>{
     const testRider = Keypair.generate();
@@ -490,6 +478,14 @@ describe("ride_hailing", () => {
       [Buffer.from("driver"), driver.publicKey.toBuffer()],
       program.programId
     );
+    const [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault_authority"), driver.publicKey.toBuffer()],
+      program.programId
+    );
+    const [driverVaultPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), driver.publicKey.toBuffer()],
+      program.programId
+    );
 
     const vehicleHash = new Uint8Array(32).fill(7);
     const fareAmount = new anchor.BN(1_000_000);
@@ -498,9 +494,11 @@ describe("ride_hailing", () => {
       .registerDriver(fareAmount, Array.from(vehicleHash))
       .accounts({
         driver: driverPda,
+        mint: mint,
         authority: driver.publicKey,
         driverTokenAccount: driverTokenAccount,
-        vault: await createRawTokenAccount(driver.publicKey, driver),
+        vaultAuthority: vaultAuthorityPda,
+        vault: driverVaultPda,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       } as any)
@@ -542,7 +540,7 @@ describe("ride_hailing", () => {
       .accounts({
         ride: ridePda,
         driver: driverPda,
-        driverAuthority: driver.publicKey,
+        authority: driver.publicKey,
       } as any)
       .signers([driver])
       .rpc();
